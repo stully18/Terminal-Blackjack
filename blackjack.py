@@ -92,6 +92,36 @@ def card_label(card: Card) -> str:
     return f"{card.rank}{SUIT_SYMBOLS[card.suit]}"
 
 
+def card_style(card: Card) -> str:
+    return SUIT_STYLES[card.suit]
+
+
+def card_face(label: str, style: str = "bright_white", hidden: bool = False) -> list[Text]:
+    if hidden:
+        return [
+            Text("┌─────┐", style="dim"),
+            Text("│#####│", style="dim"),
+            Text("│#####│", style="dim"),
+            Text("│#####│", style="dim"),
+            Text("└─────┘", style="dim"),
+        ]
+
+    top_label = label.ljust(5)
+    bottom_label = label.rjust(5)
+    return [
+        Text("┌─────┐", style="bright_white"),
+        Text(f"│{top_label}│", style=style),
+        Text("│     │", style="bright_white"),
+        Text(f"│{bottom_label}│", style=style),
+        Text("└─────┘", style="bright_white"),
+    ]
+
+
+def moving_card_face(label: str, hidden: bool = False) -> str:
+    display = "###" if hidden else label.center(3)
+    return f"╭─{display}─╮"
+
+
 def rank_counts(cards: list[Card]) -> tuple[tuple[str, int], ...]:
     counts = {rank: 0 for rank in ("A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K")}
     for card in cards:
@@ -260,18 +290,26 @@ def visible_odds(deck: Deck, state: TableState, actions: dict[str, str]) -> str:
 
 
 def hand_markup(hand: list[Card], hide_first_card: bool = False) -> Text:
-    rendered = Text()
+    faces: list[list[Text]] = []
     visible_cards = hand[1:] if hide_first_card else hand
 
     if hide_first_card and hand:
-        rendered.append("??", style="dim")
-        if visible_cards:
-            rendered.append("  ")
+        faces.append(card_face("###", hidden=True))
 
-    for index, card in enumerate(visible_cards):
-        if index:
-            rendered.append("  ")
-        rendered.append_text(card_text(card))
+    for card in visible_cards:
+        faces.append(card_face(card_label(card), card_style(card)))
+
+    rendered = Text()
+    if not faces:
+        return rendered
+
+    for row_index in range(len(faces[0])):
+        if row_index:
+            rendered.append("\n")
+        for face_index, face in enumerate(faces):
+            if face_index:
+                rendered.append("  ")
+            rendered.append_text(face[row_index])
 
     return rendered
 
@@ -303,7 +341,7 @@ def dealer_panel(pose: str) -> Panel:
             "     |    __    |",
             "      \\  '--'  /",
             "       '-.__.-'",
-            "      __/|  |\\____ [##]",
+            "      __/|  |\\____ ╭###╮",
             "     /   |__|",
             "        /____\\",
             "       /_/  \\_\\",
@@ -315,7 +353,7 @@ def dealer_panel(pose: str) -> Panel:
             "     |    __    |",
             "      \\  '--'  /",
             "       '-.__.-'",
-            " [##]____/|  |\\__",
+            " ╭###╮___/|  |\\__",
             "           |__|   \\",
             "          /____\\",
             "         /_/  \\_\\",
@@ -487,16 +525,17 @@ def whoosh_card(card: Card, target: str, hidden: bool = False) -> None:
         return
 
     label = "??" if hidden else card_label(card)
+    face = moving_card_face(label, hidden)
     destination = "YOU" if target == "player" else "DEALER"
     width = max(28, min(console.width - 8, 70))
-    frames = range(0, width - len(label) - 8, 7)
+    frames = range(0, width - len(face) - 8, 7)
 
     sys.stdout.write("\033[?25l")
     try:
         for position in frames:
             left = "-" * position
-            right = "-" * (width - position - len(label) - 6)
-            line = f"  {left}[{label}]{right}> {destination}"
+            right = "-" * (width - position - len(face) - 6)
+            line = f"  {left}{face}{right}> {destination}"
             sys.stdout.write("\r\033[K" + line)
             sys.stdout.flush()
             time.sleep(WHOOSH_DELAY)

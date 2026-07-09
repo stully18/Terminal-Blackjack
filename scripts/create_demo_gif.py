@@ -35,6 +35,7 @@ FONT = font(18)
 FONT_BOLD = font(18, bold=True)
 FONT_SMALL = font(15)
 FONT_TITLE = font(24, bold=True)
+FONT_CARD = font(32, bold=True)
 
 
 def text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], value: str, fill: str = WHITE, bold: bool = False) -> None:
@@ -52,7 +53,25 @@ def card(draw: ImageDraw.ImageDraw, x: int, y: int, label: str, red: bool = Fals
     outline = RED if red else WHITE
     text_fill = outline if hidden or red else "#17202a"
     draw.rounded_rectangle((x, y, x + 58, y + 76), radius=6, fill=fill, outline=outline, width=2)
-    draw.text((x + 12, y + 24), "??" if hidden else label, font=FONT_BOLD, fill=text_fill)
+    if hidden:
+        draw.text((x + 15, y + 25), "##", font=FONT_BOLD, fill=text_fill)
+        draw.line((x + 12, y + 14, x + 46, y + 62), fill="#3f5063", width=2)
+        draw.line((x + 46, y + 14, x + 12, y + 62), fill="#3f5063", width=2)
+        return
+
+    rank = label[:-1]
+    suit = label[-1]
+    draw.text((x + 7, y + 5), rank, font=FONT_SMALL, fill=text_fill)
+    draw.text((x + 37, y + 52), rank, font=FONT_SMALL, fill=text_fill)
+    bbox = draw.textbbox((0, 0), suit, font=FONT_CARD)
+    suit_width = bbox[2] - bbox[0]
+    suit_height = bbox[3] - bbox[1]
+    draw.text(
+        (x + (58 - suit_width) / 2, y + (76 - suit_height) / 2 - 3),
+        suit,
+        font=FONT_CARD,
+        fill=text_fill,
+    )
 
 
 def dealer(draw: ImageDraw.ImageDraw, pose: str) -> None:
@@ -64,7 +83,7 @@ def dealer(draw: ImageDraw.ImageDraw, pose: str) -> None:
         "       '-.__.-'",
     ]
     if pose == "deal":
-        lines += ["      __/|  |\\____ [##]", "     /   |__|"]
+        lines += ["      __/|  |\\____ ╭###╮", "     /   |__|"]
     else:
         lines += ["      __/|  |\\__", "     /   |__|   \\"]
     lines += ["        /____\\", "       /_/  \\_\\"]
@@ -84,7 +103,7 @@ def base_frame(notice: str, player_cards: list[str], dealer_cards: list[str], po
     draw.rounded_rectangle((54, 76, WIDTH - 54, 112), radius=4, fill="#121a22", outline="#334155")
     draw.text((104, 84), "Bankroll $90", font=FONT_BOLD, fill=GREEN)
     draw.text((382, 84), "Bet $10", font=FONT_BOLD, fill=YELLOW)
-    draw.text((600, 84), notice, font=FONT, fill=MUTED)
+    draw.text((580, 85), notice, font=FONT_SMALL, fill=MUTED)
 
     panel(draw, (92, 130, WIDTH - 92, 322), "Dealer", GREEN)
     dealer(draw, pose)
@@ -115,8 +134,8 @@ def whoosh_frame(position: int) -> Image.Image:
     end = 720
     x = start + int((end - start) * position / 5)
     draw.line((start, y, end, y), fill="#334155", width=2)
-    draw.line((x - 70, y, x - 16, y), fill=CYAN, width=3)
-    draw.polygon([(x + 50, y), (x + 36, y - 8), (x + 36, y + 8)], fill=CYAN)
+    draw.line((x - 80, y, x - 18, y), fill=CYAN, width=3)
+    draw.rounded_rectangle((x + 5, y - 31, x + 67, y + 47), radius=8, fill="#05070a")
     card(draw, x, y - 38, "K♥", red=True)
     return image
 
